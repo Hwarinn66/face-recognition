@@ -1,0 +1,9 @@
+{
+    "12345": {
+        "nis": "12345",
+        "name": "Deniss",
+        "password": "denis123",
+        "created_at": "2025-11-02 20:30:10",
+        "face_registered": false
+    }
+}

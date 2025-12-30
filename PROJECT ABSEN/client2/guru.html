@@ -1,0 +1,908 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard Walikelas - Monitoring Absensi</title>
+    <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #f5f7fa;
+            min-height: 100vh;
+        }
+
+        /* Login Screen */
+        .login-container {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            padding: 20px;
+        }
+
+        .login-card {
+            background: white;
+            border-radius: 20px;
+            padding: 40px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            max-width: 450px;
+            width: 100%;
+        }
+
+        .login-card h2 {
+            color: #667eea;
+            margin-bottom: 30px;
+            text-align: center;
+            font-size: 2em;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            color: #333;
+            font-weight: 600;
+        }
+
+        .form-group input, .form-group select {
+            width: 100%;
+            padding: 12px 15px;
+            border: 2px solid #e0e0e0;
+            border-radius: 10px;
+            font-size: 1em;
+        }
+
+        .form-group input:focus, .form-group select:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        .btn-login {
+            width: 100%;
+            padding: 15px;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            border: none;
+            border-radius: 10px;
+            font-size: 1.1em;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .btn-login:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 25px rgba(102, 126, 234, 0.4);
+        }
+
+        .alert {
+            padding: 15px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            display: none;
+        }
+
+        .alert.show {
+            display: block;
+        }
+
+        .alert-error {
+            background: #f8d7da;
+            color: #721c24;
+            border-left: 5px solid #dc3545;
+        }
+
+        .alert-success {
+            background: #d4edda;
+            color: #155724;
+            border-left: 5px solid #28a745;
+        }
+
+        /* Dashboard */
+        .dashboard-container {
+            display: none;
+        }
+
+        .dashboard-container.active {
+            display: block;
+        }
+
+        .topbar {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px 40px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+
+        .topbar h1 {
+            font-size: 1.8em;
+        }
+
+        .topbar .class-badge {
+            background: rgba(255,255,255,0.2);
+            padding: 10px 20px;
+            border-radius: 20px;
+            font-size: 1.1em;
+            font-weight: 600;
+        }
+
+        .topbar .logout-btn {
+            background: rgba(255,255,255,0.2);
+            padding: 10px 20px;
+            border-radius: 10px;
+            border: none;
+            color: white;
+            cursor: pointer;
+            font-weight: 600;
+        }
+
+        .topbar .logout-btn:hover {
+            background: rgba(255,255,255,0.3);
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 30px;
+        }
+
+        .nav-tabs {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 30px;
+            background: white;
+            padding: 10px;
+            border-radius: 15px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+        }
+
+        .nav-tab {
+            padding: 15px 30px;
+            border: none;
+            background: transparent;
+            border-radius: 10px;
+            cursor: pointer;
+            font-size: 1em;
+            font-weight: 600;
+            color: #666;
+            transition: all 0.3s ease;
+        }
+
+        .nav-tab.active {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+            animation: fadeIn 0.3s ease;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* Stats Cards */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .stat-card {
+            background: white;
+            padding: 25px;
+            border-radius: 15px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+            display: flex;
+            align-items: center;
+            gap: 20px;
+        }
+
+        .stat-icon {
+            width: 60px;
+            height: 60px;
+            border-radius: 15px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 2em;
+        }
+
+        .stat-icon.blue {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+        }
+
+        .stat-icon.green {
+            background: linear-gradient(135deg, #11998e, #38ef7d);
+        }
+
+        .stat-icon.pink {
+            background: linear-gradient(135deg, #f093fb, #f5576c);
+        }
+
+        .stat-icon.cyan {
+            background: linear-gradient(135deg, #4facfe, #00f2fe);
+        }
+
+        .stat-info h3 {
+            font-size: 2em;
+            color: #333;
+        }
+
+        .stat-info p {
+            color: #666;
+            margin-top: 5px;
+        }
+
+        /* Table */
+        .card {
+            background: white;
+            border-radius: 15px;
+            padding: 25px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+            margin-bottom: 20px;
+        }
+
+        .card h2 {
+            color: #333;
+            margin-bottom: 20px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        table thead {
+            background: #f5f7fa;
+        }
+
+        table th,
+        table td {
+            padding: 15px;
+            text-align: left;
+            border-bottom: 1px solid #e0e0e0;
+        }
+
+        table th {
+            font-weight: 600;
+            color: #667eea;
+        }
+
+        table tbody tr:hover {
+            background: #f9f9f9;
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 5px 15px;
+            border-radius: 20px;
+            font-size: 0.9em;
+            font-weight: 600;
+        }
+
+        .badge.success {
+            background: #d4edda;
+            color: #155724;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: #999;
+        }
+
+        .empty-state .icon {
+            font-size: 4em;
+            margin-bottom: 20px;
+        }
+
+        /* Pending Registrations */
+        .registration-card {
+            background: white;
+            border: 2px solid #e0e0e0;
+            border-radius: 15px;
+            padding: 20px;
+            margin-bottom: 15px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .registration-card.new {
+            border-color: #667eea;
+            background: #f5f7ff;
+        }
+
+        .registration-info h3 {
+            color: #333;
+            margin-bottom: 5px;
+        }
+
+        .registration-info p {
+            color: #666;
+            font-size: 0.9em;
+        }
+
+        .registration-actions {
+            display: flex;
+            gap: 10px;
+        }
+
+        .btn {
+            padding: 10px 25px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.3s ease;
+        }
+
+        .btn-approve {
+            background: #38ef7d;
+            color: white;
+        }
+
+        .btn-approve:hover {
+            background: #2dd46d;
+        }
+
+        .btn-reject {
+            background: #f5576c;
+            color: white;
+        }
+
+        .btn-reject:hover {
+            background: #e54858;
+        }
+    </style>
+</head>
+<body>
+    <!-- Login Screen -->
+    <div id="loginScreen" class="login-container">
+        <div class="login-card">
+            <h2>👨‍🏫 Login Walikelas</h2>
+            <div id="loginAlert" class="alert"></div>
+            
+            <div class="form-group">
+                <label for="username">Username</label>
+                <input type="text" id="username" placeholder="Masukkan username">
+            </div>
+
+            <div class="form-group">
+                <label for="password">Password</label>
+                <input type="password" id="password" placeholder="Masukkan password">
+            </div>
+
+            <p style="color: #666; font-size: 0.9em; margin-bottom: 20px;">
+                💡 Default: guru001 / password123
+            </p>
+
+            <button class="btn-login" onclick="handleLogin()">
+                🔓 Login
+            </button>
+        </div>
+    </div>
+
+    <!-- Dashboard Screen -->
+    <div id="dashboardScreen" class="dashboard-container">
+        <div class="topbar">
+            <div>
+                <h1>👨‍🏫 Dashboard Walikelas</h1>
+                <span class="class-badge" id="teacherClass">Loading...</span>
+            </div>
+            <div style="display: flex; gap: 15px; align-items: center;">
+                <span id="teacherName">Loading...</span>
+                <button class="logout-btn" onclick="handleLogout()">🚪 Logout</button>
+            </div>
+        </div>
+
+        <div class="container">
+            <!-- Navigation Tabs -->
+            <div class="nav-tabs">
+                <button class="nav-tab active" onclick="showTab('dashboard')">📊 Dashboard</button>
+                <button class="nav-tab" onclick="showTab('attendance')">✅ Kehadiran</button>
+                <button class="nav-tab" onclick="showTab('students')">👥 Daftar Siswa</button>
+                <button class="nav-tab" onclick="showTab('pending')">⏳ Pending (<span id="pendingCount">0</span>)</button>
+            </div>
+
+            <!-- Dashboard Tab -->
+            <div id="dashboard" class="tab-content active">
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-icon blue">👥</div>
+                        <div class="stat-info">
+                            <h3 id="totalStudents">0</h3>
+                            <p>Total Siswa Kelas Ini</p>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon green">✅</div>
+                        <div class="stat-info">
+                            <h3 id="todayAttendance">0</h3>
+                            <p>Hadir Hari Ini</p>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon pink">📊</div>
+                        <div class="stat-info">
+                            <h3 id="totalAttendance">0</h3>
+                            <p>Total Kehadiran</p>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon cyan">📈</div>
+                        <div class="stat-info">
+                            <h3 id="attendanceRate">0%</h3>
+                            <p>Persentase Hadir</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <h2>🕒 Kehadiran Hari Ini - <span id="classTitle">Kelas</span></h2>
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Waktu</th>
+                                <th>NIS</th>
+                                <th>Nama</th>
+                                <th>Status</th>
+                                <th>Confidence</th>
+                            </tr>
+                        </thead>
+                        <tbody id="todayTable">
+                            <tr>
+                                <td colspan="5" class="empty-state">
+                                    <div class="icon">📭</div>
+                                    <p>Belum ada yang absen hari ini</p>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Attendance Tab -->
+            <div id="attendance" class="tab-content">
+                <div class="card">
+                    <h2>📋 Semua Kehadiran - <span id="classTitle2">Kelas</span></h2>
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Tanggal & Waktu</th>
+                                <th>NIS</th>
+                                <th>Nama</th>
+                                <th>Status</th>
+                                <th>Metode</th>
+                            </tr>
+                        </thead>
+                        <tbody id="allAttendanceTable">
+                            <tr>
+                                <td colspan="5" class="empty-state">
+                                    <div class="icon">📭</div>
+                                    <p>Tidak ada data kehadiran</p>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Students Tab -->
+            <div id="students" class="tab-content">
+                <div class="card">
+                    <h2>👥 Daftar Siswa - <span id="classTitle3">Kelas</span></h2>
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>NIS</th>
+                                <th>Nama</th>
+                                <th>Email</th>
+                                <th>Tanggal Daftar</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody id="studentsTable">
+                            <tr>
+                                <td colspan="5" class="empty-state">
+                                    <div class="icon">👤</div>
+                                    <p>Belum ada siswa terdaftar di kelas ini</p>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Pending Tab -->
+            <div id="pending" class="tab-content">
+                <div class="card">
+                    <h2>⏳ Pendaftaran Menunggu Approval - <span id="classTitle4">Kelas</span></h2>
+                    <div id="pendingList">
+                        <div class="empty-state">
+                            <div class="icon">✅</div>
+                            <p>Tidak ada pendaftaran yang menunggu approval</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const socket = io('http://localhost:5000');
+        const API_URL = 'http://localhost:5000/api';
+        let currentTeacher = null;
+
+        // Login
+        async function handleLogin() {
+            const username = document.getElementById('username').value.trim();
+            const password = document.getElementById('password').value.trim();
+
+            if (!username || !password) {
+                showAlert('error', 'Username dan password harus diisi!', 'loginAlert');
+                return;
+            }
+
+            try {
+                const response = await fetch(`${API_URL}/auth/login-teacher`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username, password })
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    currentTeacher = data.teacher;
+                    localStorage.setItem('teacherUser', JSON.stringify(data.teacher));
+                    
+                    // Show dashboard
+                    document.getElementById('loginScreen').style.display = 'none';
+                    document.getElementById('dashboardScreen').classList.add('active');
+                    
+                    document.getElementById('teacherName').textContent = currentTeacher.name;
+                    document.getElementById('teacherClass').textContent = currentTeacher.class;
+                    document.querySelectorAll('[id^="classTitle"]').forEach(el => {
+                        el.textContent = currentTeacher.class;
+                    });
+                    
+                    socket.emit('join_room', { room: 'guru' });
+                    loadAllData();
+                } else {
+                    showAlert('error', data.message, 'loginAlert');
+                }
+            } catch (error) {
+                showAlert('error', 'Terjadi kesalahan. Coba lagi.', 'loginAlert');
+            }
+        }
+
+        function handleLogout() {
+            if (confirm('Yakin ingin logout?')) {
+                localStorage.removeItem('teacherUser');
+                currentTeacher = null;
+                document.getElementById('dashboardScreen').classList.remove('active');
+                document.getElementById('loginScreen').style.display = 'flex';
+            }
+        }
+
+        // Tab Navigation
+        function showTab(tabName) {
+            document.querySelectorAll('.tab-content').forEach(tab => {
+                tab.classList.remove('active');
+            });
+            document.querySelectorAll('.nav-tab').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            
+            document.getElementById(tabName).classList.add('active');
+            event.target.classList.add('active');
+
+            if (tabName === 'attendance') {
+                loadAllAttendance();
+            } else if (tabName === 'students') {
+                loadStudents();
+            } else if (tabName === 'pending') {
+                loadPending();
+            }
+        }
+
+        // Load data dengan filter kelas
+        async function loadAllData() {
+            if (!currentTeacher) return;
+            loadStats();
+            loadTodayAttendance();
+            loadPendingCount();
+        }
+
+        async function loadStats() {
+            try {
+                const response = await fetch(`${API_URL}/stats?class=${encodeURIComponent(currentTeacher.class)}`);
+                const data = await response.json();
+                
+                document.getElementById('totalStudents').textContent = data.totalStudents;
+                document.getElementById('todayAttendance').textContent = data.todayAttendance;
+                document.getElementById('totalAttendance').textContent = data.totalAttendance;
+                document.getElementById('attendanceRate').textContent = data.attendanceRate + '%';
+            } catch (error) {
+                console.error('Error loading stats:', error);
+            }
+        }
+
+        async function loadTodayAttendance() {
+            try {
+                const response = await fetch(`${API_URL}/attendance/today?class=${encodeURIComponent(currentTeacher.class)}`);
+                const data = await response.json();
+                
+                const tbody = document.getElementById('todayTable');
+                
+                if (data.records.length === 0) {
+                    tbody.innerHTML = `
+                        <tr>
+                            <td colspan="5" class="empty-state">
+                                <div class="icon">📭</div>
+                                <p>Belum ada yang absen hari ini</p>
+                            </td>
+                        </tr>
+                    `;
+                } else {
+                    tbody.innerHTML = data.records.map(record => `
+                        <tr>
+                            <td>${new Date(record.Timestamp).toLocaleTimeString('id-ID')}</td>
+                            <td>${record.NIS}</td>
+                            <td>${record.Nama}</td>
+                            <td><span class="badge success">${record.Status}</span></td>
+                            <td>${record.Confidence || 'N/A'}</td>
+                        </tr>
+                    `).join('');
+                }
+            } catch (error) {
+                console.error('Error loading today attendance:', error);
+            }
+        }
+
+        async function loadAllAttendance() {
+            try {
+                const response = await fetch(`${API_URL}/attendance?class=${encodeURIComponent(currentTeacher.class)}`);
+                const data = await response.json();
+                
+                const tbody = document.getElementById('allAttendanceTable');
+                
+                const filteredRecords = data.records.filter(r => r.Kelas === currentTeacher.class);
+                
+                if (filteredRecords.length === 0) {
+                    tbody.innerHTML = `
+                        <tr>
+                            <td colspan="5" class="empty-state">
+                                <div class="icon">📭</div>
+                                <p>Tidak ada data kehadiran</p>
+                            </td>
+                        </tr>
+                    `;
+                } else {
+                    tbody.innerHTML = filteredRecords.map(record => `
+                        <tr>
+                            <td>${new Date(record.Timestamp).toLocaleString('id-ID')}</td>
+                            <td>${record.NIS}</td>
+                            <td>${record.Nama}</td>
+                            <td><span class="badge success">${record.Status}</span></td>
+                            <td>${record.Metode}</td>
+                        </tr>
+                    `).join('');
+                }
+            } catch (error) {
+                console.error('Error loading attendance:', error);
+            }
+        }
+
+        async function loadStudents() {
+            try {
+                const response = await fetch(`${API_URL}/students`);
+                const data = await response.json();
+                
+                const tbody = document.getElementById('studentsTable');
+                
+                const filteredStudents = data.students.filter(s => s.class === currentTeacher.class);
+                
+                if (filteredStudents.length === 0) {
+                    tbody.innerHTML = `
+                        <tr>
+                            <td colspan="5" class="empty-state">
+                                <div class="icon">👤</div>
+                                <p>Belum ada siswa terdaftar di kelas ini</p>
+                            </td>
+                        </tr>
+                    `;
+                } else {
+                    tbody.innerHTML = filteredStudents.map(student => `
+                        <tr>
+                            <td>${student.nis}</td>
+                            <td>${student.name}</td>
+                            <td>${student.email || '-'}</td>
+                            <td>${new Date(student.registered_at).toLocaleDateString('id-ID')}</td>
+                            <td><span class="badge success">Active</span></td>
+                        </tr>
+                    `).join('');
+                }
+            } catch (error) {
+                console.error('Error loading students:', error);
+            }
+        }
+
+        async function loadPending() {
+            try {
+                const response = await fetch(`${API_URL}/pending-registrations`);
+                const data = await response.json();
+                
+                loadPendingCount();
+                
+                const container = document.getElementById('pendingList');
+                
+                const filteredPending = data.registrations.filter(r => r.class === currentTeacher.class);
+                
+                if (filteredPending.length === 0) {
+                    container.innerHTML = `
+                        <div class="empty-state">
+                            <div class="icon">✅</div>
+                            <p>Tidak ada pendaftaran yang menunggu approval untuk kelas ini</p>
+                        </div>
+                    `;
+                } else {
+                    container.innerHTML = filteredPending.map(reg => `
+                        <div class="registration-card new">
+                            <div class="registration-info">
+                                <h3>${reg.name}</h3>
+                                <p>NIS: ${reg.nis} | Kelas: ${reg.class}</p>
+                                <p>Email: ${reg.email || '-'} | HP: ${reg.phone || '-'}</p>
+                                <p style="font-size: 0.85em; color: #999;">
+                                    Diajukan: ${new Date(reg.submitted_at).toLocaleString('id-ID')}
+                                </p>
+                            </div>
+                            <div class="registration-actions">
+                                <button class="btn btn-approve" onclick="approveRegistration('${reg.request_id}')">
+                                    ✅ Setujui
+                                </button>
+                                <button class="btn btn-reject" onclick="rejectRegistration('${reg.request_id}')">
+                                    ❌ Tolak
+                                </button>
+                            </div>
+                        </div>
+                    `).join('');
+                }
+            } catch (error) {
+                console.error('Error loading pending:', error);
+            }
+        }
+
+        async function loadPendingCount() {
+            try {
+                const response = await fetch(`${API_URL}/pending-registrations`);
+                const data = await response.json();
+                const filteredCount = data.registrations.filter(r => r.class === currentTeacher.class).length;
+                document.getElementById('pendingCount').textContent = filteredCount;
+            } catch (error) {
+                console.error('Error loading pending count:', error);
+            }
+        }
+
+        async function approveRegistration(requestId) {
+            if (!confirm('Setujui pendaftaran siswa ini?')) return;
+            
+            try {
+                const response = await fetch(`${API_URL}/approve-registration/${requestId}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ approved_by: currentTeacher.name })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    alert('Pendaftaran berhasil disetujui!');
+                    loadPending();
+                    loadStats();
+                }
+            } catch (error) {
+                console.error('Error approving:', error);
+                alert('Gagal menyetujui pendaftaran');
+            }
+        }
+
+        async function rejectRegistration(requestId) {
+            if (!confirm('Tolak pendaftaran siswa ini?')) return;
+            
+            try {
+                const response = await fetch(`${API_URL}/reject-registration/${requestId}`, {
+                    method: 'POST'
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    alert('Pendaftaran ditolak');
+                    loadPending();
+                }
+            } catch (error) {
+                console.error('Error rejecting:', error);
+                alert('Gagal menolak pendaftaran');
+            }
+        }
+
+        function showAlert(type, message, elementId) {
+            const alert = document.getElementById(elementId);
+            alert.className = `alert alert-${type} show`;
+            alert.textContent = message;
+            setTimeout(() => alert.classList.remove('show'), 5000);
+        }
+
+        // Socket events
+        socket.on('connect', () => {
+            if (currentTeacher) {
+                socket.emit('join_room', { room: 'guru' });
+            }
+        });
+
+        socket.on('new_attendance', () => {
+            if (currentTeacher) {
+                loadStats();
+                loadTodayAttendance();
+            }
+        });
+
+        socket.on('new_registration_request', () => {
+            if (currentTeacher) {
+                loadPendingCount();
+            }
+        });
+
+        // Auto login
+        window.onload = () => {
+            const savedTeacher = localStorage.getItem('teacherUser');
+            if (savedTeacher) {
+                currentTeacher = JSON.parse(savedTeacher);
+                document.getElementById('loginScreen').style.display = 'none';
+                document.getElementById('dashboardScreen').classList.add('active');
+                document.getElementById('teacherName').textContent = currentTeacher.name;
+                document.getElementById('teacherClass').textContent = currentTeacher.class;
+                document.querySelectorAll('[id^="classTitle"]').forEach(el => {
+                    el.textContent = currentTeacher.class;
+                });
+                socket.emit('join_room', { room: 'guru' });
+                loadAllData();
+            }
+        };
+
+        // Auto refresh
+        setInterval(() => {
+            if (currentTeacher) {
+                loadStats();
+                loadTodayAttendance();
+            }
+        }, 30000);
+    </script>
+</body>
+</body>
+</html>

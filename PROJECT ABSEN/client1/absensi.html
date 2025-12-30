@@ -1,0 +1,423 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Alat Absensi - Face Recognition</title>
+    <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .container {
+            background: white;
+            border-radius: 30px;
+            padding: 40px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            max-width: 900px;
+            width: 100%;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .header h1 {
+            color: #667eea;
+            font-size: 2.5em;
+            margin-bottom: 10px;
+        }
+
+        .header .time {
+            font-size: 2em;
+            color: #333;
+            font-weight: bold;
+            margin: 20px 0;
+        }
+
+        .header .date {
+            font-size: 1.2em;
+            color: #666;
+        }
+
+        .camera-container {
+            background: #000;
+            border-radius: 20px;
+            height: 500px;
+            position: relative;
+            overflow: hidden;
+            margin-bottom: 30px;
+        }
+
+        .camera-container video {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .camera-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 1.5em;
+            text-align: center;
+            background: rgba(0, 0, 0, 0.5);
+        }
+
+        .camera-overlay.hidden {
+            display: none;
+        }
+
+        .status-indicator {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: rgba(0, 0, 0, 0.8);
+            padding: 15px 25px;
+            border-radius: 10px;
+            color: white;
+            font-weight: bold;
+            font-size: 1.1em;
+        }
+
+        .status-live {
+            background: rgba(56, 239, 125, 0.9) !important;
+        }
+
+        .blink-counter {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0, 0, 0, 0.8);
+            padding: 15px 30px;
+            border-radius: 10px;
+            color: white;
+            font-size: 1.2em;
+        }
+
+        .face-frame {
+            position: absolute;
+            border: 3px solid #38ef7d;
+            border-radius: 10px;
+            box-shadow: 0 0 20px rgba(56, 239, 125, 0.5);
+        }
+
+        .result-card {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            border-radius: 20px;
+            padding: 30px;
+            text-align: center;
+            color: white;
+            display: none;
+        }
+
+        .result-card.show {
+            display: block;
+            animation: slideUp 0.5s ease;
+        }
+
+        @keyframes slideUp {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .result-card .icon {
+            font-size: 5em;
+            margin-bottom: 20px;
+        }
+
+        .result-card h2 {
+            font-size: 2em;
+            margin-bottom: 10px;
+        }
+
+        .result-card p {
+            font-size: 1.2em;
+            opacity: 0.9;
+        }
+
+        .result-card.success {
+            background: linear-gradient(135deg, #11998e, #38ef7d);
+        }
+
+        .result-card.error {
+            background: linear-gradient(135deg, #f093fb, #f5576c);
+        }
+
+        .connection-status {
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            background: rgba(0, 0, 0, 0.8);
+            color: white;
+            padding: 10px 20px;
+            border-radius: 10px;
+            font-size: 0.9em;
+        }
+
+        .connection-status.connected {
+            background: rgba(56, 239, 125, 0.9);
+        }
+
+        @media (max-width: 768px) {
+            .header h1 {
+                font-size: 1.8em;
+            }
+            .camera-container {
+                height: 400px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="connection-status" id="connectionStatus">
+        🔴 Disconnected
+    </div>
+
+    <div class="container">
+        <div class="header">
+            <h1>📸 Alat Absensi Face Recognition</h1>
+            <div class="time" id="currentTime">--:--:--</div>
+            <div class="date" id="currentDate">Loading...</div>
+        </div>
+
+        <div class="camera-container">
+            <video id="cameraVideo" autoplay playsinline></video>
+            
+            <div class="camera-overlay" id="cameraOverlay">
+                <div class="icon">📷</div>
+                <p>Posisikan wajah Anda di depan kamera</p>
+                <p style="font-size: 0.8em; margin-top: 10px; opacity: 0.8;">
+                    Sistem akan otomatis memulai verifikasi
+                </p>
+            </div>
+
+            <div class="status-indicator" id="statusIndicator" style="display: none;">
+                ⏳ Verifying...
+            </div>
+
+            <div class="blink-counter" id="blinkCounter" style="display: none;">
+                👁️ Kedipan: <span id="blinkCount">0</span>/2
+            </div>
+        </div>
+
+        <div class="result-card" id="resultCard">
+            <div class="icon" id="resultIcon">✅</div>
+            <h2 id="resultName">Nama Siswa</h2>
+            <p id="resultInfo">NIS: 12345 | Kelas: XII IPA 1</p>
+            <p id="resultMessage" style="margin-top: 20px;">Absensi berhasil dicatat</p>
+        </div>
+    </div>
+
+    <script>
+        // Socket.IO Connection
+        const socket = io('http://localhost:5000');
+        let stream = null;
+        let frameInterval = null;
+        let isProcessing = false;
+
+        // Connection status
+        socket.on('connect', () => {
+            document.getElementById('connectionStatus').textContent = '🟢 Connected';
+            document.getElementById('connectionStatus').classList.add('connected');
+            socket.emit('join_room', { room: 'absensi' });
+            console.log('Connected to central server');
+            startCamera();
+        });
+
+        socket.on('disconnect', () => {
+            document.getElementById('connectionStatus').textContent = '🔴 Disconnected';
+            document.getElementById('connectionStatus').classList.remove('connected');
+            console.log('Disconnected from server');
+        });
+
+        // Update time
+        function updateTime() {
+            const now = new Date();
+            document.getElementById('currentTime').textContent = 
+                now.toLocaleTimeString('id-ID');
+            document.getElementById('currentDate').textContent = 
+                now.toLocaleDateString('id-ID', { 
+                    weekday: 'long', 
+                    year: 'numeric', 
+                    month: 'long', 
+                    day: 'numeric' 
+                });
+        }
+
+        setInterval(updateTime, 1000);
+        updateTime();
+
+        // Camera functions
+        async function startCamera() {
+            try {
+                stream = await navigator.mediaDevices.getUserMedia({ 
+                    video: { width: 1280, height: 720 } 
+                });
+                const video = document.getElementById('cameraVideo');
+                video.srcObject = stream;
+
+                // Wait for video to load
+                video.onloadedmetadata = () => {
+                    video.play();
+                    setTimeout(() => {
+                        document.getElementById('cameraOverlay').classList.add('hidden');
+                        startAttendanceProcess();
+                    }, 1000);
+                };
+            } catch (error) {
+                console.error('Camera error:', error);
+                document.getElementById('cameraOverlay').innerHTML = `
+                    <div class="icon">❌</div>
+                    <p>Tidak dapat mengakses kamera</p>
+                    <p style="font-size: 0.8em;">Pastikan kamera terhubung dan izin diberikan</p>
+                `;
+            }
+        }
+
+        function captureFrame() {
+            const video = document.getElementById('cameraVideo');
+            const canvas = document.createElement('canvas');
+            canvas.width = video.videoWidth;
+            canvas.height = video.videoHeight;
+            canvas.getContext('2d').drawImage(video, 0, 0);
+            return canvas.toDataURL('image/jpeg', 0.8);
+        }
+
+        // Attendance process
+        function startAttendanceProcess() {
+            if (isProcessing) return;
+            
+            isProcessing = true;
+            document.getElementById('statusIndicator').style.display = 'block';
+            document.getElementById('blinkCounter').style.display = 'block';
+            document.getElementById('resultCard').style.display = 'none';
+
+            socket.emit('start_attendance');
+
+            frameInterval = setInterval(() => {
+                const video = document.getElementById('cameraVideo');
+                if (video.readyState === video.HAVE_ENOUGH_DATA) {
+                    const frame = captureFrame();
+                    socket.emit('process_attendance_frame', { frame });
+                }
+            }, 100);
+        }
+
+        function stopAttendanceProcess() {
+            isProcessing = false;
+            if (frameInterval) {
+                clearInterval(frameInterval);
+                frameInterval = null;
+            }
+            document.getElementById('statusIndicator').style.display = 'none';
+            document.getElementById('blinkCounter').style.display = 'none';
+        }
+
+        // Socket events
+        socket.on('attendance_status', (data) => {
+            document.getElementById('statusIndicator').textContent = 
+                '⏳ ' + data.message;
+        });
+
+        socket.on('blink_update', (data) => {
+            document.getElementById('blinkCount').textContent = data.blinkCount;
+            
+            if (data.isLive) {
+                document.getElementById('statusIndicator').textContent = '✅ Live Verified!';
+                document.getElementById('statusIndicator').classList.add('status-live');
+            }
+        });
+
+        socket.on('attendance_result', (data) => {
+            stopAttendanceProcess();
+
+            const resultCard = document.getElementById('resultCard');
+            const resultIcon = document.getElementById('resultIcon');
+            const resultName = document.getElementById('resultName');
+            const resultInfo = document.getElementById('resultInfo');
+            const resultMessage = document.getElementById('resultMessage');
+
+            if (data.status === 'success') {
+                resultCard.className = 'result-card success show';
+                resultIcon.textContent = '✅';
+                resultName.textContent = data.student.name;
+                resultInfo.textContent = `NIS: ${data.student.nis} | Kelas: ${data.student.class}`;
+                resultMessage.textContent = data.message;
+            } else if (data.status === 'duplicate') {
+                resultCard.className = 'result-card error show';
+                resultIcon.textContent = '⚠️';
+                resultName.textContent = data.student.name;
+                resultInfo.textContent = `NIS: ${data.student.nis} | Kelas: ${data.student.class}`;
+                resultMessage.textContent = data.message;
+            } else {
+                resultCard.className = 'result-card error show';
+                resultIcon.textContent = '❌';
+                resultName.textContent = 'Wajah Tidak Dikenali';
+                resultInfo.textContent = '';
+                resultMessage.textContent = data.message;
+            }
+
+            // Auto restart after 3 seconds
+            setTimeout(() => {
+                resultCard.classList.remove('show');
+                document.getElementById('blinkCount').textContent = '0';
+                document.getElementById('statusIndicator').classList.remove('status-live');
+                startAttendanceProcess();
+            }, 3000);
+        });
+
+        socket.on('error', (data) => {
+            console.error('Socket error:', data.message);
+            stopAttendanceProcess();
+            
+            const resultCard = document.getElementById('resultCard');
+            resultCard.className = 'result-card error show';
+            document.getElementById('resultIcon').textContent = '❌';
+            document.getElementById('resultName').textContent = 'Error';
+            document.getElementById('resultInfo').textContent = '';
+            document.getElementById('resultMessage').textContent = data.message;
+
+            setTimeout(() => {
+                resultCard.classList.remove('show');
+                startAttendanceProcess();
+            }, 3000);
+        });
+
+        // Cleanup on page unload
+        window.onbeforeunload = () => {
+            if (stream) {
+                stream.getTracks().forEach(track => track.stop());
+            }
+        };
+    </script>
+</body>
+</html>

@@ -1,0 +1,20 @@
+{
+    "guru001": {
+        "username": "guru001",
+        "password": "password123",
+        "name": "Budi Santoso",
+        "class": "X MIPA 1"
+    },
+    "guru002": {
+        "username": "guru002",
+        "password": "password123",
+        "name": "Siti Rahayu",
+        "class": "X MIPA 2"
+    },
+    "guru003": {
+        "username": "guru003",
+        "password": "password123",
+        "name": "Ahmad Hidayat",
+        "class": "XI IPA 1"
+    }
+}

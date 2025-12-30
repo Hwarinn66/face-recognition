@@ -1,0 +1,29 @@
+{
+    "15230009": {
+        "nis": "15230009",
+        "name": "Efriza Taufiqurrohman",
+        "class": "X MIPA 1",
+        "email": "efriza@example.com",
+        "phone": "081234567890",
+        "face_registered": false,
+        "created_at": "2024-01-10"
+    },
+    "15230349": {
+        "nis": "15230349",
+        "name": "Denis Pratama Putra",
+        "class": "X MIPA 1",
+        "email": "denis@example.com",
+        "phone": "081234567891",
+        "face_registered": false,
+        "created_at": "2024-01-10"
+    },
+    "15230096": {
+        "nis": "15230096",
+        "name": "Nurmalisa Al Hawa",
+        "class": "X MIPA 2",
+        "email": "nurmalisa@example.com",
+        "phone": "081234567892",
+        "face_registered": false,
+        "created_at": "2024-01-10"
+    }
+}

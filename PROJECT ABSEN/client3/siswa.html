@@ -1,0 +1,728 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Portal Siswa - Registrasi Wajah</title>
+    <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 500px;
+            margin: 0 auto;
+        }
+
+        .header {
+            text-align: center;
+            color: white;
+            margin-bottom: 30px;
+        }
+
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+        }
+
+        .card {
+            background: white;
+            border-radius: 20px;
+            padding: 40px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            margin-bottom: 20px;
+        }
+
+        /* Login & Register Form */
+        .auth-screen {
+            display: none;
+        }
+
+        .auth-screen.active {
+            display: block;
+        }
+
+        h2 {
+            color: #667eea;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            color: #333;
+            font-weight: 600;
+        }
+
+        .form-group input {
+            width: 100%;
+            padding: 12px 15px;
+            border: 2px solid #e0e0e0;
+            border-radius: 10px;
+            font-size: 1em;
+            transition: all 0.3s ease;
+        }
+
+        .form-group input:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        .btn {
+            width: 100%;
+            padding: 15px;
+            border: none;
+            border-radius: 10px;
+            font-size: 1.1em;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin-top: 10px;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 25px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn-secondary {
+            background: #e0e0e0;
+            color: #333;
+        }
+
+        .link-text {
+            text-align: center;
+            margin-top: 20px;
+            color: #666;
+        }
+
+        .link-text a {
+            color: #667eea;
+            text-decoration: none;
+            font-weight: 600;
+        }
+
+        .link-text a:hover {
+            text-decoration: underline;
+        }
+
+        /* Dashboard */
+        .dashboard-screen {
+            display: none;
+        }
+
+        .dashboard-screen.active {
+            display: block;
+        }
+
+        .user-info {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            padding: 25px;
+            border-radius: 15px;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+
+        .user-info h3 {
+            font-size: 1.8em;
+            margin-bottom: 5px;
+        }
+
+        .user-info p {
+            opacity: 0.9;
+        }
+
+        .notification-box {
+            padding: 20px;
+            border-radius: 15px;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+
+        .notification-box.warning {
+            background: #fff3cd;
+            border: 2px solid #ffc107;
+            color: #856404;
+        }
+
+        .notification-box.success {
+            background: #d4edda;
+            border: 2px solid #28a745;
+            color: #155724;
+        }
+
+        .notification-box .icon {
+            font-size: 3em;
+            margin-bottom: 15px;
+        }
+
+        .notification-box h4 {
+            font-size: 1.3em;
+            margin-bottom: 10px;
+        }
+
+        .menu-grid {
+            display: grid;
+            gap: 15px;
+        }
+
+        .menu-item {
+            background: linear-gradient(135deg, #f5f7fa, #c3cfe2);
+            padding: 25px;
+            border-radius: 15px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .menu-item:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+        }
+
+        .menu-item .icon {
+            font-size: 3em;
+            margin-bottom: 15px;
+        }
+
+        .menu-item h4 {
+            color: #667eea;
+            margin-bottom: 5px;
+        }
+
+        .menu-item p {
+            color: #666;
+            font-size: 0.9em;
+        }
+
+        /* Registration Screen */
+        .registration-screen {
+            display: none;
+        }
+
+        .registration-screen.active {
+            display: block;
+        }
+
+        .camera-preview {
+            background: #000;
+            border-radius: 15px;
+            height: 400px;
+            position: relative;
+            overflow: hidden;
+            margin: 20px 0;
+        }
+
+        .camera-preview video {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .camera-overlay {
+            position: absolute;
+            inset: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            background: rgba(0, 0, 0, 0.7);
+            color: white;
+        }
+
+        .camera-overlay.hidden {
+            display: none;
+        }
+
+        .camera-status {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: rgba(0, 0, 0, 0.8);
+            padding: 10px 20px;
+            border-radius: 10px;
+            color: white;
+            font-weight: bold;
+        }
+
+        .camera-status.live {
+            background: rgba(56, 239, 125, 0.9);
+        }
+
+        .blink-counter {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0, 0, 0, 0.8);
+            padding: 15px 30px;
+            border-radius: 10px;
+            color: white;
+            font-size: 1.2em;
+        }
+
+        .capture-progress {
+            position: absolute;
+            bottom: 80px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0, 0, 0, 0.8);
+            padding: 10px 20px;
+            border-radius: 10px;
+            color: white;
+        }
+
+        .alert {
+            padding: 15px 20px;
+            border-radius: 10px;
+            margin: 20px 0;
+            display: none;
+        }
+
+        .alert.show {
+            display: block;
+            animation: slideDown 0.3s ease;
+        }
+
+        @keyframes slideDown {
+            from {
+                opacity: 0;
+                transform: translateY(-20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .alert-error {
+            background: #f8d7da;
+            color: #721c24;
+            border-left: 5px solid #dc3545;
+        }
+
+        .alert-success {
+            background: #d4edda;
+            color: #155724;
+            border-left: 5px solid #28a745;
+        }
+
+        .alert-info {
+            background: #d1ecf1;
+            color: #0c5460;
+            border-left: 5px solid #17a2b8;
+        }
+
+        @media (max-width: 768px) {
+            .header h1 {
+                font-size: 1.8em;
+            }
+            .container {
+                max-width: 100%;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🎓 Portal Siswa</h1>
+            <p>Sistem Absensi Face Recognition</p>
+        </div>
+
+        <div id="loginScreen" class="auth-screen active">
+            <div class="card">
+                <h2>🔐 Login Siswa</h2>
+                <div id="loginAlert" class="alert"></div>
+                
+                <p style="color: #666; text-align: center; margin-bottom: 25px;">
+                    Gunakan data yang sudah terdaftar di sekolah
+                </p>
+                
+                <div class="form-group">
+                    <label for="loginNIS">NIS (Nomor Induk Siswa)</label>
+                    <input type="text" id="loginNIS" placeholder="Contoh: 15230009">
+                </div>
+
+                <div class="form-group">
+                    <label for="loginName">Nama Lengkap</label>
+                    <input type="text" id="loginName" placeholder="Contoh: Efriza Taufiqurrohman">
+                </div>
+
+                <button class="btn btn-primary" onclick="handleLogin()">
+                    🔓 Login
+                </button>
+
+                <div style="background: #f5f7ff; border-left: 4px solid #667eea; padding: 15px; border-radius: 10px; margin-top: 20px;">
+                    <p style="color: #667eea; font-weight: 600; margin-bottom: 8px;">💡 Contoh Login:</p>
+                    <p style="color: #666; font-size: 0.9em; margin-bottom: 5px;">
+                        <strong>NIS:</strong> 15230009<br>
+                        <strong>Nama:</strong> Efriza Taufiqurrohman
+                    </p>
+                    <p style="color: #666; font-size: 0.9em; margin-bottom: 5px;">
+                        <strong>NIS:</strong> 15230349<br>
+                        <strong>Nama:</strong> Denis Pratama Putra
+                    </p>
+                    <p style="color: #666; font-size: 0.9em;">
+                        <strong>NIS:</strong> 15230096<br>
+                        <strong>Nama:</strong> Nurmalisa Al Hawa
+                    </p>
+                </div>
+            </div>
+        </div>
+
+        <div id="dashboardScreen" class="dashboard-screen">
+            <div class="card">
+                <div class="user-info">
+                    <h3 id="userName">Loading...</h3>
+                    <p id="userNIS">NIS: Loading...</p>
+                </div>
+
+                <div id="faceStatusNotification" class="notification-box warning">
+                    <div class="icon">⚠️</div>
+                    <h4>Wajah Belum Terdaftar!</h4>
+                    <p>Anda belum melakukan registrasi wajah. Silakan daftar untuk bisa melakukan absensi.</p>
+                </div>
+
+                <div class="menu-grid">
+                    <div class="menu-item" onclick="startFaceRegistration()" id="registerFaceBtn">
+                        <div class="icon">📸</div>
+                        <h4>Daftar Wajah</h4>
+                        <p>Registrasi wajah untuk absensi</p>
+                    </div>
+
+                    <div class="menu-item" onclick="showProfile()">
+                        <div class="icon">👤</div>
+                        <h4>Profil Saya</h4>
+                        <p>Lihat informasi akun</p>
+                    </div>
+
+                    <div class="menu-item" onclick="handleLogout()">
+                        <div class="icon">🚪</div>
+                        <h4>Logout</h4>
+                        <p>Keluar dari sistem</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div id="faceRegistrationScreen" class="registration-screen">
+            <div class="card" style="max-width: 800px; margin: 0 auto;">
+                <h2>📸 Registrasi Wajah</h2>
+                <div id="faceRegAlert" class="alert"></div>
+
+                <div class="camera-preview">
+                    <video id="cameraVideo" autoplay playsinline></video>
+                    <div class="camera-overlay" id="cameraOverlay">
+                        <div style="font-size: 3em; margin-bottom: 20px;">📷</div>
+                        <p>Kamera akan aktif otomatis</p>
+                    </div>
+                    <div class="camera-status" id="cameraStatus" style="display: none;">
+                        ⏳ Detecting...
+                    </div>
+                    <div class="blink-counter" id="blinkCounter" style="display: none;">
+                        👁️ Kedipan: <span id="blinkCount">0</span>/2
+                    </div>
+                    <div class="capture-progress" id="captureProgress" style="display: none;">
+                        📷 Foto: <span id="captureCount">0</span>/20
+                    </div>
+                </div>
+
+                <div style="display: flex; gap: 15px; margin-top: 20px;">
+                    <button class="btn btn-secondary" onclick="cancelFaceRegistration()" style="flex: 1;">
+                        ← Batal
+                    </button>
+                    <button class="btn btn-primary" id="startCaptureBtn" onclick="startCapture()" style="flex: 1;">
+                        🎥 Mulai Capture
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const socket = io('http://localhost:5000');
+        const API_URL = 'http://localhost:5000/api';
+        let currentUser = null;
+        let stream = null;
+        let frameInterval = null;
+
+        // Socket connection
+        socket.on('connect', () => {
+            console.log('Connected to server');
+            socket.emit('join_room', { room: 'siswa' });
+        });
+
+        // Screen Navigation
+        function showLoginScreen() {
+            document.querySelectorAll('.auth-screen, .dashboard-screen, .registration-screen')
+                .forEach(s => s.classList.remove('active'));
+            document.getElementById('loginScreen').classList.add('active');
+        }
+
+        function showDashboard() {
+            document.querySelectorAll('.auth-screen, .dashboard-screen, .registration-screen')
+                .forEach(s => s.classList.remove('active'));
+            document.getElementById('dashboardScreen').classList.add('active');
+        }
+
+        // === FUNGSI DIPERBARUI ===
+        async function handleLogin() {
+            const nis = document.getElementById('loginNIS').value.trim();
+            // PERBAIKAN: Mengambil 'loginName' bukan 'loginPassword'
+            const name = document.getElementById('loginName').value.trim();
+
+            // PERBAIKAN: Validasi 'name' bukan 'password'
+            if (!nis || !name) {
+                showAlert('error', 'NIS dan Nama Lengkap harus diisi!', 'loginAlert');
+                return;
+            }
+
+            try {
+                // PERBAIKAN: Memanggil endpoint baru
+                const response = await fetch(`${API_URL}/auth/authenticate-student`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    // PERBAIKAN: Mengirim 'name' bukan 'password'
+                    body: JSON.stringify({ nis, name })
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    // PERBAIKAN: Menggunakan 'data.student' (sesuai balikan server)
+                    currentUser = data.student; 
+                    localStorage.setItem('studentUser', JSON.stringify(currentUser));
+                    
+                    document.getElementById('userName').textContent = currentUser.name;
+                    document.getElementById('userNIS').textContent = 'NIS: ' + currentUser.nis;
+                    
+                    checkFaceStatus(); // Memanggil fungsi baru yang sudah disederhanakan
+                    showDashboard();
+                } else {
+                    showAlert('error', data.message, 'loginAlert');
+                }
+            } catch (error) {
+                showAlert('error', 'Terjadi kesalahan. Coba lagi.', 'loginAlert');
+            }
+        }
+
+        // === FUNGSI DIPERBARUI ===
+        // Disederhanakan: Tidak perlu fetch API, status sudah ada di 'currentUser'
+        function checkFaceStatus() {
+            if (!currentUser) return;
+
+            const notification = document.getElementById('faceStatusNotification');
+            const registerBtn = document.getElementById('registerFaceBtn');
+
+            // Langsung membaca dari objek currentUser
+            if (currentUser.face_registered) {
+                notification.className = 'notification-box success';
+                notification.innerHTML = `
+                    <div class="icon">✅</div>
+                    <h4>Wajah Sudah Terdaftar!</h4>
+                    <p>Anda sudah melakukan registrasi wajah dan dapat melakukan absensi.</p>
+                `;
+                registerBtn.style.display = 'none'; // Sembunyikan tombol daftar
+            } else {
+                notification.className = 'notification-box warning';
+                notification.innerHTML = `
+                    <div class="icon">⚠️</div>
+                    <h4>Wajah Belum Terdaftar!</h4>
+                    <p>Anda belum melakukan registrasi wajah. Silakan daftar untuk bisa melakukan absensi.</p>
+                `;
+                registerBtn.style.display = 'block'; // Tampilkan tombol daftar
+            }
+        }
+
+        // Face Registration
+        function startFaceRegistration() {
+            document.querySelectorAll('.dashboard-screen').forEach(s => s.classList.remove('active'));
+            document.getElementById('faceRegistrationScreen').classList.add('active');
+            setTimeout(() => startCamera(), 500);
+        }
+
+        function cancelFaceRegistration() {
+            stopCamera();
+            document.querySelectorAll('.registration-screen').forEach(s => s.classList.remove('active'));
+            showDashboard();
+        }
+
+        async function startCamera() {
+            try {
+                stream = await navigator.mediaDevices.getUserMedia({ 
+                    video: { width: 1280, height: 720 } 
+                });
+                const video = document.getElementById('cameraVideo');
+                video.srcObject = stream;
+
+                video.onloadedmetadata = () => {
+                    video.play();
+                    document.getElementById('cameraOverlay').classList.add('hidden');
+                };
+            } catch (error) {
+                console.error('Camera error:', error);
+                showAlert('error', 'Tidak dapat mengakses kamera!', 'faceRegAlert');
+            }
+        }
+
+        function stopCamera() {
+            if (stream) {
+                stream.getTracks().forEach(track => track.stop());
+                stream = null;
+            }
+            if (frameInterval) {
+                clearInterval(frameInterval);
+                frameInterval = null;
+            }
+        }
+
+        function captureFrame() {
+            const video = document.getElementById('cameraVideo');
+            const canvas = document.createElement('canvas');
+            canvas.width = video.videoWidth;
+            canvas.height = video.videoHeight;
+            canvas.getContext('2d').drawImage(video, 0, 0);
+            return canvas.toDataURL('image/jpeg', 0.8);
+        }
+
+        // === FUNGSI DIPERBARUI ===
+        function startCapture() {
+            if (!currentUser) return;
+
+            document.getElementById('startCaptureBtn').disabled = true;
+            document.getElementById('cameraStatus').style.display = 'block';
+            document.getElementById('blinkCounter').style.display = 'block';
+
+            // PERBAIKAN: Mengambil data 'class' dan 'email' dari currentUser
+            const studentData = {
+                name: currentUser.name,
+                nis: currentUser.nis,
+                class: currentUser.class || '', // Menggunakan data dari login
+                email: currentUser.email || ''  // Menggunakan data dari login
+            };
+
+            socket.emit('start_student_registration', studentData);
+
+            frameInterval = setInterval(() => {
+                const video = document.getElementById('cameraVideo');
+                if (video.readyState === video.HAVE_ENOUGH_DATA) {
+                    const frame = captureFrame();
+                    socket.emit('process_registration_frame', { frame });
+                }
+            }, 100);
+        }
+
+        // Socket events
+        socket.on('registration_status', (data) => {
+            document.getElementById('cameraStatus').textContent = '⏳ ' + data.message;
+        });
+
+        socket.on('blink_update', (data) => {
+            document.getElementById('blinkCount').textContent = data.blinkCount;
+            
+            if (data.isLive) {
+                document.getElementById('cameraStatus').textContent = '✅ Live Verified!';
+                document.getElementById('cameraStatus').classList.add('live');
+                document.getElementById('captureProgress').style.display = 'block';
+            }
+        });
+
+        socket.on('capture_update', (data) => {
+            document.getElementById('captureCount').textContent = data.capturedCount;
+        });
+
+        socket.on('registration_complete', (data) => {
+            stopCamera();
+            
+            if (data.status === 'pending') {
+                showAlert('success', 'Pendaftaran wajah berhasil! Menunggu approval guru.', 'faceRegAlert');
+                // Set status di currentUser agar UI update
+                currentUser.face_registered = false; // Masih false karena pending
+                
+                setTimeout(() => {
+                    cancelFaceRegistration();
+                    // Panggil checkFaceStatus untuk update notifikasi di dashboard
+                    checkFaceStatus(); 
+                }, 3000);
+            }
+        });
+
+        socket.on('registration_error', (data) => {
+            showAlert('error', data.message, 'faceRegAlert');
+            document.getElementById('startCaptureBtn').disabled = false;
+        });
+
+        socket.on('error', (data) => {
+            showAlert('error', data.message, 'faceRegAlert');
+            document.getElementById('startCaptureBtn').disabled = false;
+        });
+
+        // Profile & Logout
+        // === FUNGSI DIPERBARUI ===
+        function showProfile() {
+            // PERBAIKAN: Menampilkan status face_registered dengan benar
+            alert(`Nama: ${currentUser.name}\nNIS: ${currentUser.nis}\nStatus Wajah: ${(currentUser.face_registered ? 'Terdaftar' : 'Belum Terdaftar')}`);
+        }
+
+        function handleLogout() {
+            if (confirm('Yakin ingin logout?')) {
+                localStorage.removeItem('studentUser');
+                currentUser = null;
+                stopCamera();
+                showLoginScreen();
+            }
+        }
+
+        // Alert helper
+        function showAlert(type, message, elementId) {
+            const alert = document.getElementById(elementId);
+            alert.className = `alert alert-${type} show`;
+            alert.textContent = message;
+
+            setTimeout(() => {
+                alert.classList.remove('show');
+            }, 5000);
+        }
+
+        // Auto login if saved
+        window.onload = () => {
+            const savedUser = localStorage.getItem('studentUser');
+            if (savedUser) {
+                currentUser = JSON.parse(savedUser);
+                document.getElementById('userName').textContent = currentUser.name;
+                document.getElementById('userNIS').textContent = 'NIS: ' + currentUser.nis;
+                checkFaceStatus(); // Fungsi ini akan membaca status dari currentUser
+                showDashboard();
+            }
+        };
+
+        // Cleanup
+        window.onbeforeunload = () => {
+            stopCamera();
+        };
+    </script>
+</body>
+</html>
